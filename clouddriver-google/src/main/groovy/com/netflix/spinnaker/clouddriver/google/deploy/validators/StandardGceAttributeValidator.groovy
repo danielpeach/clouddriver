@@ -16,6 +16,7 @@
 
 package com.netflix.spinnaker.clouddriver.google.deploy.validators
 
+import com.netflix.spinnaker.clouddriver.google.deploy.description.BasicGoogleDeployDescription
 import com.netflix.spinnaker.clouddriver.google.model.GoogleDisk
 import com.netflix.spinnaker.clouddriver.google.model.GoogleDiskType
 import com.netflix.spinnaker.clouddriver.google.model.GoogleInstanceTypeDisk
@@ -186,6 +187,15 @@ class StandardGceAttributeValidator {
     def result = true
     if (value < 0) {
       errors.rejectValue attribute, "${context}.${attribute}.negative"
+      result = false
+    }
+    return result
+  }
+
+  def validateBetweenZeroAndOneDouble(double value, String attribute) {
+    def result = true
+    if (value < 0 || value > 1) {
+      errors.rejectValue attribute, "${context}.${attribute} must be between zero and one."
       result = false
     }
     return result
@@ -373,6 +383,37 @@ class StandardGceAttributeValidator {
                            "Local SSD disks must have auto-delete set.")
       }
     }
+  }
+
+  def validateAutoscalingPolicy(BasicGoogleDeployDescription.AutoscalingPolicy policy) {
+
+    policy.with {
+      validateNonNegativeLong(minNumReplicas, "autoscalingPolicy.minNumReplicas")
+      validateNonNegativeLong(maxNumReplicas, "autoscalingPolicy.maxNumReplicas")
+      validateNonNegativeLong(coolDownPeriodSec, "autoscalingPolicy.coolDownPeriodSec")
+      validateMaxNotLessThanMin(minNumReplicas,
+        maxNumReplicas,
+        "autoscalingPolicy.minNumReplicas",
+        "autoscalingPolicy.maxNumReplicas")
+
+      if (customMetricUtilizations) {
+        customMetricUtilizations.eachWithIndex{ utilization, index ->
+          validateNotEmpty(utilization.metric,
+            "autoscalingPolicy.customMetricUtilizations${index}.metric")
+          validateBetweenZeroAndOneDouble(utilization.utilizationTarget,
+            "autoscalingPolicy.customMetricUtilizations${index}.utilizationTarget")
+          //enum here.
+        }
+      }
+    }
+
+    [ "cpuUtilization", "loadBalancingUtilization" ].each { property ->
+      if (policy[property]) {
+        validateBetweenZeroAndOneDouble(policy[property].utilizationTarget,
+          "autoscalingPolicy.${property}.utilizationTarget")
+      }
+    }
+
   }
 
   def validateTags(List<String> tags) {

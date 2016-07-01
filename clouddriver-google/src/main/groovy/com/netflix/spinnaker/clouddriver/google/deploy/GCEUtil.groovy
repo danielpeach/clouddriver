@@ -507,9 +507,10 @@ class GCEUtil {
 
 
   static Autoscaler buildAutoscaler(String serverGroupName,
-                                    Operation migCreateOperation,
-                                    BasicGoogleDeployDescription description) {
-    description.autoscalingPolicy.with {
+                                    String zone,
+                                    String targetLink,
+                                    BasicGoogleDeployDescription.AutoscalingPolicy autoscalingPolicy) {
+    autoscalingPolicy.with {
       def gceAutoscalingPolicy = new AutoscalingPolicy(coolDownPeriodSec: coolDownPeriodSec,
                                                        minNumReplicas: minNumReplicas,
                                                        maxNumReplicas: maxNumReplicas)
@@ -533,8 +534,8 @@ class GCEUtil {
       }
 
       return new Autoscaler(name: serverGroupName,
-                            zone: migCreateOperation.zone,
-                            target: migCreateOperation.targetLink,
+                            zone: zone,
+                            target: targetLink,
                             autoscalingPolicy: gceAutoscalingPolicy)
     }
   }
