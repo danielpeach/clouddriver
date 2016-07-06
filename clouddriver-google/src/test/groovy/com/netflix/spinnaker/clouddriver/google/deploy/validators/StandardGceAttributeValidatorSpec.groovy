@@ -16,6 +16,8 @@
 
 package com.netflix.spinnaker.clouddriver.google.deploy.validators
 
+import com.netflix.spinnaker.clouddriver.google.model.GoogleScalingPolicy
+import com.netflix.spinnaker.clouddriver.google.model.UtilizationTargetType
 import com.netflix.spinnaker.clouddriver.google.security.FakeGoogleCredentials
 import com.netflix.spinnaker.clouddriver.google.security.GoogleNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.security.DefaultAccountCredentialsProvider
@@ -615,4 +617,91 @@ class StandardGceAttributeValidatorSpec extends Specification {
       1 * errors.rejectValue("instanceIds", "${DECORATOR}.instanceId3.empty")
       0 * errors._
   }
+
+  void "valid between zero and one double"() {
+    setup:
+      def errors = Mock(Errors)
+      def validator = new StandardGceAttributeValidator(DECORATOR, errors)
+      def label = "testAttribute"
+
+    when:
+      validator.validateBetweenZeroAndOneDouble(0, label)
+      validator.validateBetweenZeroAndOneDouble(1, label)
+      validator.validateBetweenZeroAndOneDouble(0.5, label)
+    then:
+      0 * errors._
+  }
+
+  void "invalid between zero and one double"() {
+    setup:
+      def errors = Mock(Errors)
+      def validator = new StandardGceAttributeValidator(DECORATOR, errors)
+      def label = "testAttribute"
+
+    when:
+      validator.validateBetweenZeroAndOneDouble(-1, label)
+      validator.validateBetweenZeroAndOneDouble(2, label)
+      validator.validateBetweenZeroAndOneDouble(100, label)
+    then:
+      3 * errors.rejectValue(label, "decorator.testAttribute must be between zero and one.")
+  }
+
+  void "valid basic scaling policy"() {
+    setup:
+      def errors = Mock(Errors)
+      def validator = new StandardGceAttributeValidator(DECORATOR, errors)
+      def scalingPolicy = new GoogleScalingPolicy(minNumReplicas: 1,
+        maxNumReplicas: 10,
+        coolDownPeriodSec: 60,
+        cpuUtilization: new GoogleScalingPolicy.CpuUtilization(utilizationTarget: 0.9))
+
+    when:
+      validator.validateAutoscalingPolicy(scalingPolicy)
+
+    then:
+      0 * errors._
+  }
+
+  void "valid complex scaling policy"() {
+    setup:
+      def errors = Mock(Errors)
+      def validator = new StandardGceAttributeValidator(DECORATOR, errors)
+
+      def scalingPolicy = new GoogleScalingPolicy(minNumReplicas: 1,
+        maxNumReplicas: 10,
+        coolDownPeriodSec: 60,
+        cpuUtilization: new GoogleScalingPolicy.CpuUtilization(utilizationTarget: 0.7),
+        loadBalancingUtilization: new GoogleScalingPolicy.LoadBalancingUtilization(utilizationTarget: 0.7),
+        customMetricUtilizations: [ new GoogleScalingPolicy.CustomMetricUtilization(metric: "myMetric",
+          utilizationTarget: 0.9,
+          utilizationTargetType: UtilizationTargetType.DELTA_PER_MINUTE) ])
+
+    when:
+      validator.validateAutoscalingPolicy(scalingPolicy)
+
+    then:
+      0 * errors._
+  }
+
+//  void "invalid scaling policy"() {
+//    setup:
+//      def errors = Mock(Errors)
+//      def validator = new StandardGceAttributeValidator(DECORATOR, errors)
+//
+//      def scalingPolicy = new GoogleScalingPolicy(minNumReplicas: 1,
+//        maxNumReplicas: 10,
+//        coolDownPeriodSec: 60,
+//        cpuUtilization: new GoogleScalingPolicy.CpuUtilization(utilizationTarget: 1),
+//        loadBalancingUtilization: new GoogleScalingPolicy.LoadBalancingUtilization(utilizationTarget: 1),
+//        customMetricUtilizations: [ new GoogleScalingPolicy.CustomMetricUtilization(
+//          utilizationTarget: 0.9,
+//          utilizationTargetType: UtilizationTargetType.DELTA_PER_MINUTE) ])
+//
+//    when:
+//      validator.validateAutoscalingPolicy(scalingPolicy)
+//
+//    then:
+//      0 * errors._
+//
+//  }
 }

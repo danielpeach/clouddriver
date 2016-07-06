@@ -32,6 +32,7 @@ import com.netflix.spinnaker.clouddriver.google.deploy.description.BaseGoogleIns
 import com.netflix.spinnaker.clouddriver.google.deploy.description.BasicGoogleDeployDescription
 import com.netflix.spinnaker.clouddriver.google.deploy.handlers.BasicGoogleDeployHandler
 import com.netflix.spinnaker.clouddriver.google.model.GoogleDisk
+import com.netflix.spinnaker.clouddriver.google.model.GoogleScalingPolicy
 import com.netflix.spinnaker.clouddriver.google.model.GoogleSecurityGroup
 import com.netflix.spinnaker.clouddriver.google.model.GoogleServerGroup
 import com.netflix.spinnaker.clouddriver.google.provider.view.GoogleClusterProvider
@@ -159,7 +160,7 @@ class CopyLastGoogleServerGroupAtomicOperationUnitSpec extends Specification {
                                                          loadBalancers: ["testlb-west-1", "testlb-west-2"],
                                                          securityGroups: ["sg-3", "sg-4"] as Set,
                                                          autoscalingPolicy:
-                                                            new BasicGoogleDeployDescription.AutoscalingPolicy(
+                                                            new GoogleScalingPolicy(
                                                                 coolDownPeriodSec: 90,
                                                                 minNumReplicas: 5,
                                                                 maxNumReplicas: 9
@@ -221,7 +222,7 @@ class CopyLastGoogleServerGroupAtomicOperationUnitSpec extends Specification {
       newDescription.subnet = SUBNET_NAME
       newDescription.loadBalancers = LOAD_BALANCERS
       newDescription.securityGroups = SECURITY_GROUPS
-      newDescription.autoscalingPolicy = new BasicGoogleDeployDescription.AutoscalingPolicy(coolDownPeriodSec: 45,
+      newDescription.autoscalingPolicy = new GoogleScalingPolicy(coolDownPeriodSec: 45,
                                                                                             minNumReplicas: 2,
                                                                                             maxNumReplicas: 5)
       def deploymentResult = new DeploymentResult(serverGroupNames: ["$REGION:$NEW_SERVER_GROUP_NAME"])

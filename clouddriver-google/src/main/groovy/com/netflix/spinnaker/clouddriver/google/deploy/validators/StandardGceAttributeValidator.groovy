@@ -16,10 +16,11 @@
 
 package com.netflix.spinnaker.clouddriver.google.deploy.validators
 
-import com.netflix.spinnaker.clouddriver.google.deploy.description.BasicGoogleDeployDescription
 import com.netflix.spinnaker.clouddriver.google.model.GoogleDisk
 import com.netflix.spinnaker.clouddriver.google.model.GoogleDiskType
 import com.netflix.spinnaker.clouddriver.google.model.GoogleInstanceTypeDisk
+import com.netflix.spinnaker.clouddriver.google.model.GoogleScalingPolicy
+import com.netflix.spinnaker.clouddriver.google.model.UtilizationTargetType
 import com.netflix.spinnaker.clouddriver.google.security.GoogleCredentials
 import com.netflix.spinnaker.clouddriver.security.AccountCredentialsProvider
 import org.springframework.validation.Errors
@@ -385,35 +386,44 @@ class StandardGceAttributeValidator {
     }
   }
 
-  def validateAutoscalingPolicy(BasicGoogleDeployDescription.AutoscalingPolicy policy) {
+  def validateAutoscalingPolicy(GoogleScalingPolicy policy) {
 
-    policy.with {
-      validateNonNegativeLong(minNumReplicas, "autoscalingPolicy.minNumReplicas")
-      validateNonNegativeLong(maxNumReplicas, "autoscalingPolicy.maxNumReplicas")
-      validateNonNegativeLong(coolDownPeriodSec, "autoscalingPolicy.coolDownPeriodSec")
-      validateMaxNotLessThanMin(minNumReplicas,
-        maxNumReplicas,
-        "autoscalingPolicy.minNumReplicas",
-        "autoscalingPolicy.maxNumReplicas")
+    validateNotEmpty(policy, "autoscalingPolicy")
 
-      if (customMetricUtilizations) {
-        customMetricUtilizations.eachWithIndex{ utilization, index ->
-          validateNotEmpty(utilization.metric,
-            "autoscalingPolicy.customMetricUtilizations${index}.metric")
-          validateBetweenZeroAndOneDouble(utilization.utilizationTarget,
-            "autoscalingPolicy.customMetricUtilizations${index}.utilizationTarget")
-          //enum here.
+    if (policy) {
+
+      policy.with {
+        validateNonNegativeLong(minNumReplicas, "autoscalingPolicy.minNumReplicas")
+        validateNonNegativeLong(maxNumReplicas, "autoscalingPolicy.maxNumReplicas")
+        validateNonNegativeLong(coolDownPeriodSec, "autoscalingPolicy.coolDownPeriodSec")
+        validateMaxNotLessThanMin(minNumReplicas,
+          maxNumReplicas,
+          "autoscalingPolicy.minNumReplicas",
+          "autoscalingPolicy.maxNumReplicas")
+
+        customMetricUtilizations.eachWithIndex { utilization, index ->
+          def path = "autoscalingPolicy.customMetricUtilizations${index}"
+
+          utilization.with {
+            validateNotEmpty(metric, "${path}.metric")
+            validateBetweenZeroAndOneDouble(utilizationTarget, "${path}.utilizationTarget")
+            validateNotEmpty(utilizationTargetType, "${path}.utilizationTargetType")
+
+            if (!UtilizationTargetType.values().contains(utilizationTargetType)) {
+              errors.rejectValue("utilizationTargetType",
+                "${context}.${path}.utilizationTargetType")
+            }
+          }
+        }
+      }
+
+      [ "cpuUtilization", "loadBalancingUtilization" ].each {
+        if (policy[it]) {
+          validateBetweenZeroAndOneDouble(policy[it].utilizationTarget,
+            "autoscalingPolicy.${it}.utilizationTarget")
         }
       }
     }
-
-    [ "cpuUtilization", "loadBalancingUtilization" ].each { property ->
-      if (policy[property]) {
-        validateBetweenZeroAndOneDouble(policy[property].utilizationTarget,
-          "autoscalingPolicy.${property}.utilizationTarget")
-      }
-    }
-
   }
 
   def validateTags(List<String> tags) {

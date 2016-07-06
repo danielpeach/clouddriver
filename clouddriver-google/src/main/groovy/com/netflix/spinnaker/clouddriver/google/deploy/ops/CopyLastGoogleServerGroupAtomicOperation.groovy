@@ -27,6 +27,7 @@ import com.netflix.spinnaker.clouddriver.google.deploy.GCEUtil
 import com.netflix.spinnaker.clouddriver.google.deploy.description.BasicGoogleDeployDescription
 import com.netflix.spinnaker.clouddriver.google.deploy.handlers.BasicGoogleDeployHandler
 import com.netflix.spinnaker.clouddriver.google.model.GoogleDisk
+import com.netflix.spinnaker.clouddriver.google.model.GoogleScalingPolicy
 import com.netflix.spinnaker.clouddriver.google.model.GoogleSecurityGroup
 import com.netflix.spinnaker.clouddriver.google.model.callbacks.Utils
 import com.netflix.spinnaker.clouddriver.google.provider.view.GoogleClusterProvider
@@ -228,7 +229,7 @@ class CopyLastGoogleServerGroupAtomicOperation implements AtomicOperation<Deploy
     }
 
     AutoscalingPolicy ancestorAutoscalingPolicy = ancestorServerGroup.autoscalingPolicy
-    BasicGoogleDeployDescription.AutoscalingPolicy ancestorAutoscalingPolicyDescription =
+    GoogleScalingPolicy ancestorAutoscalingPolicyDescription =
       GCEUtil.buildAutoscalingPolicyDescriptionFromAutoscalingPolicy(ancestorAutoscalingPolicy)
 
     newDescription.autoscalingPolicy = description.autoscalingPolicy ?: ancestorAutoscalingPolicyDescription

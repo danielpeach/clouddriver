@@ -17,6 +17,7 @@
 package com.netflix.spinnaker.clouddriver.google.deploy.description
 
 import com.netflix.spinnaker.clouddriver.deploy.DeployDescription
+import com.netflix.spinnaker.clouddriver.google.model.GoogleScalingPolicy
 import groovy.transform.AutoClone
 import groovy.transform.Canonical
 import groovy.transform.ToString
@@ -34,43 +35,8 @@ class BasicGoogleDeployDescription extends BaseGoogleInstanceDescription impleme
   String zone
   List<String> loadBalancers
   Set<String> securityGroups
-  AutoscalingPolicy autoscalingPolicy
+  GoogleScalingPolicy autoscalingPolicy
   Source source = new Source()
-
-  @Canonical
-  @ToString(includeNames = true)
-  static class AutoscalingPolicy {
-    int minNumReplicas = 2
-    int maxNumReplicas = 2
-    int coolDownPeriodSec = 60
-
-    CpuUtilization cpuUtilization
-    LoadBalancingUtilization loadBalancingUtilization
-    List<CustomMetricUtilization> customMetricUtilizations
-
-    @ToString(includeNames = true)
-    static class CpuUtilization {
-      double utilizationTarget = 0.6
-    }
-
-    @ToString(includeNames = true)
-    static class LoadBalancingUtilization {
-      double utilizationTarget = 0.6
-    }
-
-    @ToString(includeNames = true)
-    static class CustomMetricUtilization {
-      String metric
-      double utilizationTarget
-      UtilizationTargetType utilizationTargetType = UtilizationTargetType.GAUGE
-
-      enum UtilizationTargetType {
-        GAUGE,
-        DELTA_PER_SECOND,
-        DELTA_PER_MINUTE;
-      }
-    }
-  }
 
   @Canonical
   static class Source {

@@ -16,10 +16,12 @@
 
 package com.netflix.spinnaker.clouddriver.google.deploy.description
 
+import com.netflix.spinnaker.clouddriver.google.model.GoogleScalingPolicy
+
 class UpsertGoogleScalingPolicyDescription extends AbstractGoogleCredentialsDescription {
   String serverGroupName
   String zone
   String accountName
   Boolean regional
-  BasicGoogleDeployDescription.AutoscalingPolicy autoscalingPolicy
+  GoogleScalingPolicy autoscalingPolicy
 }

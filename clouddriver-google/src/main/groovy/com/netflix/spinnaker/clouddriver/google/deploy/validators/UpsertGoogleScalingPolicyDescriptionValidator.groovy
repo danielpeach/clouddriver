@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component
 import org.springframework.validation.Errors
 
 @GoogleOperation(AtomicOperations.UPSERT_SCALING_POLICY)
-@Component
+@Component("upsertGoogleScalingPolicyDescriptionValidator")
 class UpsertGoogleScalingPolicyDescriptionValidator extends
     DescriptionValidator<UpsertGoogleScalingPolicyDescription> {
 
@@ -38,37 +38,9 @@ class UpsertGoogleScalingPolicyDescriptionValidator extends
     def helper = new StandardGceAttributeValidator("upsertGoogleScalingPolicyDescription", errors)
 
     helper.validateCredentials(description.accountName, accountCredentialsProvider)
+    helper.validateZone(description.zone)
+    helper.validateServerGroupName(description.serverGroupName)
+    helper.validateAutoscalingPolicy(description.autoscalingPolicy)
 
-
-    description.autoscalingPolicy.with {
-      helper.validateNonNegativeLong(minNumReplicas, "autoscalingPolicy.minNumReplicas")
-      helper.validateNonNegativeLong(maxNumReplicas, "autoscalingPolicy.maxNumReplicas")
-      helper.validateNonNegativeLong(coolDownPeriodSec, "autoscalingPolicy.coolDownPeriodSec")
-      helper.validateMaxNotLessThanMin(minNumReplicas,
-        maxNumReplicas,
-        "autoscalingPolicy.minNumReplicas",
-        "autoscalingPolicy.maxNumReplicas")
-
-      if (cpuUtilization) {
-        helper.validateBetweenZeroAndOneDouble(cpuUtilization.utilizationTarget,
-          "autoscalingPolicy.cpuUtilization.utilizationTarget")
-      }
-
-      if (loadBalancingUtilization) {
-        helper.validateBetweenZeroAndOneDouble(loadBalancingUtilization.utilizationTarget) {
-          "autoscalingPolicy.loadBalancingUtilization.utilizationTarget"
-        }
-      }
-
-      if (customMetricUtilizations) {
-        customMetricUtilizations.eachWithIndex { utilization, index ->
-          helper.validateNotEmpty(utilization.metric,
-            "autoscalingPolicy.customMetricUtilizations${index}.metric")
-          helper.validateBetweenZeroAndOneDouble(utilization.utilizationTarget,
-            "autoscalingPolicy.customMetricUtilizations${index}.utilizationTarget")
-        }
-      }
-
-    }
   }
 }
