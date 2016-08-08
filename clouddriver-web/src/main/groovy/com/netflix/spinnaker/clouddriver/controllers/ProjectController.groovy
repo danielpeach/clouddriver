@@ -93,6 +93,7 @@ class ProjectController {
           account: projectCluster.account,
           stack: projectCluster.stack,
           detail: projectCluster.detail,
+          region: projectCluster.region,
           applications: applicationModels
       )
     }
@@ -154,6 +155,7 @@ class ProjectController {
     String account
     String stack
     String detail
+    String region
     List<ApplicationClusterModel> applications = []
     InstanceCounts getInstanceCounts() {
       Set<InstanceCounts> clusterCounts = applications.clusters.flatten().instanceCounts
