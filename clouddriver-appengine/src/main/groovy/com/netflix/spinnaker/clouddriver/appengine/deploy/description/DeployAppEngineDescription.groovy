@@ -14,20 +14,22 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.appengine
+package com.netflix.spinnaker.clouddriver.appengine.deploy.description
 
-import com.netflix.spinnaker.clouddriver.core.CloudProvider
-import java.lang.annotation.Annotation
-import org.springframework.stereotype.Component
+import com.netflix.spinnaker.clouddriver.deploy.DeployDescription
+import groovy.transform.AutoClone
+import groovy.transform.Canonical
 
-/**
- * Google App Engine declaration as a {@link CloudProvider}.
- */
-@Component
-class AppEngineCloudProvider implements CloudProvider {
-  public static final String ID = 'appengine'
-
-  final String id = ID
-  final String displayName = "App Engine"
-  final Class<Annotation> operationAnnotationType = AppEngineOperation.class
+@AutoClone
+@Canonical
+class DeployAppEngineDescription extends AbstractAppEngineCredentialsDescription implements DeployDescription {
+  String accountName
+  String application
+  String stack
+  String freeFormDetails
+  String repositoryUrl
+  String branch
+  String appYamlPath
+  Boolean promote
+  Boolean stopPreviousVersion
 }

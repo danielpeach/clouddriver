@@ -32,6 +32,7 @@ class AppEngineNamedAccountCredentials implements AccountCredentials<AppEngineCr
   final List<String> requiredGroupMembership
 
   @JsonIgnore
+  final String jsonPath
   final AppEngineCredentials credentials
   final String applicationName
   final Appengine appengine
@@ -45,6 +46,7 @@ class AppEngineNamedAccountCredentials implements AccountCredentials<AppEngineCr
     AppEngineCredentials credentials
 
     String jsonKey
+    String jsonPath
     String applicationName
     Appengine appengine
 
@@ -73,6 +75,11 @@ class AppEngineNamedAccountCredentials implements AccountCredentials<AppEngineCr
       return this
     }
 
+    Builder jsonPath(String jsonPath) {
+      this.jsonPath = jsonPath
+      return this
+    }
+
     Builder jsonKey(String jsonKey) {
       this.jsonKey = jsonKey
       return this
@@ -96,6 +103,7 @@ class AppEngineNamedAccountCredentials implements AccountCredentials<AppEngineCr
                                                   project,
                                                   AppEngineCloudProvider.ID,
                                                   requiredGroupMembership,
+                                                  jsonPath,
                                                   credentials,
                                                   applicationName,
                                                   appengine)

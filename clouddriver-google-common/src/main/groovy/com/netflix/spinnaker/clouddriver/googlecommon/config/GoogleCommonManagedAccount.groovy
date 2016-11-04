@@ -22,6 +22,7 @@ class GoogleCommonManagedAccount {
   String accountType
   String project
   String jsonPath
+  String otherProp
   List<String> requiredGroupMembership
 
   public InputStream getInputStream() {

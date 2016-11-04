@@ -64,6 +64,7 @@ class AppEngineCredentialsInitializer implements CredentialsInitializerSynchroni
           .accountType(managedAccount.accountType ?: managedAccount.name)
           .project(managedAccount.project)
           .jsonKey(jsonKey)
+          .jsonPath(managedAccount.jsonPath)
           .applicationName(appEngineApplicationName)
           .requiredGroupMembership(managedAccount.requiredGroupMembership)
           .build()
