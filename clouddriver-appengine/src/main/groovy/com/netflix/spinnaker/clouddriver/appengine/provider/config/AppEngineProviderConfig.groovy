@@ -17,12 +17,14 @@
 package com.netflix.spinnaker.clouddriver.appengine.provider.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.netflix.spectator.api.Registry
 import com.netflix.spinnaker.cats.agent.Agent
 import com.netflix.spinnaker.cats.provider.ProviderSynchronizerTypeWrapper
 import com.netflix.spinnaker.cats.thread.NamedThreadFactory
 import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.appengine.provider.AppEngineProvider
+import com.netflix.spinnaker.clouddriver.appengine.provider.agent.AppEngineServerGroupCachingAgent
 import com.netflix.spinnaker.clouddriver.appengine.security.AppEngineNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.security.AccountCredentialsRepository
 import com.netflix.spinnaker.clouddriver.security.ProviderUtils
@@ -85,10 +87,24 @@ class AppEngineProviderConfig implements Runnable {
     def allAccounts = ProviderUtils.buildThreadSafeSetOfAccounts(accountCredentialsRepository,
                                                                  AppEngineNamedAccountCredentials)
 
+    objectMapper.enable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     appEngineProvider.agents.clear()
 
     allAccounts.each { AppEngineNamedAccountCredentials credentials ->
+      def newlyAddedAgents = []
 
+      newlyAddedAgents << new AppEngineServerGroupCachingAgent(credentials.name,
+                                                               credentials,
+                                                               objectMapper,
+                                                               registry)
+
+      // If there is an agent scheduler, then this provider has been through the AgentController in the past.
+      // In that case, we need to do the scheduling here (because accounts have been added to a running system).
+      if (appEngineProvider.agentScheduler) {
+        ProviderUtils.rescheduleAgents(appEngineProvider, newlyAddedAgents)
+      }
+
+      appEngineProvider.agents.addAll(newlyAddedAgents)
     }
 
     new AppEngineProviderSynchronizer()

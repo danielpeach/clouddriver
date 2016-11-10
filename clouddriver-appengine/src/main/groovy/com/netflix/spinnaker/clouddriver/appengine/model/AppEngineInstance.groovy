@@ -24,5 +24,6 @@ class AppEngineInstance implements Instance, Serializable {
   Long launchTime
   String zone
   List<Map<String, Object>> health
+  List<String> loadBalancers
   HealthState healthState
 }

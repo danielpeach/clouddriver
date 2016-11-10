@@ -31,6 +31,9 @@ class AppEngineProvider extends AgentSchedulerAware implements SearchableProvide
   final AppEngineCloudProvider cloudProvider
   final Set<String> defaultCaches = [
     Keys.Namespace.APPLICATIONS.ns,
+    Keys.Namespace.CLUSTERS.ns,
+    Keys.Namespace.SERVER_GROUPS.ns,
+    Keys.Namespace.INSTANCES.ns,
   ].asImmutable()
 
   AppEngineProvider(AppEngineCloudProvider cloudProvider, Collection<Agent> agents) {

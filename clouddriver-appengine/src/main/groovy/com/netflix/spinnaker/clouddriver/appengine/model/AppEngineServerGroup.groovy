@@ -16,6 +16,7 @@
 
 package com.netflix.spinnaker.clouddriver.appengine.model
 
+import com.google.api.services.appengine.v1.model.Version
 import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.model.HealthState
 import com.netflix.spinnaker.clouddriver.model.ServerGroup
@@ -36,6 +37,15 @@ class AppEngineServerGroup implements ServerGroup, Serializable {
   Map<String, Object> launchConfig
   Set<String> securityGroups
   Boolean disabled
+
+  AppEngineServerGroup() {}
+
+  AppEngineServerGroup(Version version, String account, String region, String loadBalancer) {
+    this.account = account
+    this.region = region
+    this.name = version.getId()
+    this.loadBalancers = [loadBalancer] as Set<String>
+  }
 
   @Override
   ServerGroup.InstanceCounts getInstanceCounts() {

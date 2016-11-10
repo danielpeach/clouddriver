@@ -23,30 +23,19 @@ import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.appengine.provider.AppEngineProvider
 import com.netflix.spinnaker.clouddriver.appengine.security.AppEngineNamedAccountCredentials
 
-abstract class AppEngineCachingAgent implements CachingAgent, AccountAware {
+abstract class AbstractAppEngineCachingAgent implements CachingAgent, AccountAware {
   final String accountName
   final String providerName = AppEngineProvider.PROVIDER_NAME
   final AppEngineCloudProvider appEngineCloudProvider = new AppEngineCloudProvider()
   final ObjectMapper objectMapper
   final AppEngineNamedAccountCredentials credentials
-  final Integer agentIndex
-  final Integer agentCount
 
-  AppEngineCachingAgent(String accountName,
-                        ObjectMapper objectMapper,
-                        AppEngineNamedAccountCredentials credentials,
-                        Integer agentIndex,
-                        Integer agentCount) {
+  AbstractAppEngineCachingAgent(String accountName,
+                                ObjectMapper objectMapper,
+                                AppEngineNamedAccountCredentials credentials) {
     this.accountName = accountName
     this.objectMapper = objectMapper
     this.credentials = credentials
-    this.agentIndex = agentIndex
-    this.agentCount = agentCount
-  }
-
-  @Override
-  String getAgentType() {
-    return "${accountName}/${getSimpleName()}[${agentIndex + 1}/$agentCount]"
   }
 
   abstract String getSimpleName()

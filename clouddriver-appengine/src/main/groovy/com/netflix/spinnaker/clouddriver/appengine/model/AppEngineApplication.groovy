@@ -24,12 +24,6 @@ import groovy.transform.EqualsAndHashCode
 @EqualsAndHashCode(includes = ["name"])
 class AppEngineApplication implements Application, Serializable {
   final String name
-  final Map<String, String> attributes
-  final Map<String, Set<String>> clusterNames
-
-  AppEngineApplication(String name, Map<String, String> attributes, Map<String, Set<String>> clusterNames) {
-    this.name = name
-    this.attributes = attributes
-    this.clusterNames = clusterNames
-  }
+  final Map<String, String> attributes = [:]
+  final Map<String, Set<String>> clusterNames = [:].withDefault { [] as Set }
 }

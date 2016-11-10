@@ -37,7 +37,9 @@ class AppEngineApplicationProvider implements ApplicationProvider {
   private final ObjectMapper objectMapper
 
   @Autowired
-  AppEngineApplicationProvider(AppEngineCloudProvider appEngineCloudProvider, Cache cacheView, ObjectMapper objectMapper) {
+  AppEngineApplicationProvider(AppEngineCloudProvider appEngineCloudProvider,
+                               Cache cacheView,
+                               ObjectMapper objectMapper) {
     this.appEngineCloudProvider = appEngineCloudProvider
     this.cacheView = cacheView
     this.objectMapper = objectMapper

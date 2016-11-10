@@ -12,7 +12,6 @@ class Keys {
     SERVER_GROUPS,
     INSTANCES,
     LOAD_BALANCERS,
-
     ON_DEMAND
 
     static String provider = AppEngineCloudProvider.ID
@@ -22,7 +21,9 @@ class Keys {
     private Namespace() {
       def parts = name().split('_')
 
-      ns = parts.tail().inject(new StringBuilder(parts.head().toLowerCase())) { val, next -> val.append(next.charAt(0)).append(next.substring(1).toLowerCase()) }
+      ns = parts.tail().inject(new StringBuilder(parts.head().toLowerCase())) { val, next ->
+        val.append(next.charAt(0)).append(next.substring(1).toLowerCase())
+      }
     }
 
     String toString() {
@@ -51,7 +52,28 @@ class Keys {
           name: parts[4],
           cluster: parts[4],
           stack: names.stack,
+          detail: names.detail
+        ]
+        break
+      case Namespace.LOAD_BALANCERS.ns:
+        result << [
+          account: parts[2],
+          application: parts[3],
+          name: parts[4],
+          loadBalancer: parts[4]
+        ]
+        break
+      case Namespace.SERVER_GROUPS.ns:
+        def names = Names.parseName(parts[5])
+        result << [
+          application: names.app,
+          cluster: parts[2],
+          account: parts[3],
+          region: parts[4],
+          stack: names.stack,
           detail: names.detail,
+          serverGroup: parts[5],
+          name: parts[5]
         ]
         break
       default:
@@ -65,4 +87,21 @@ class Keys {
   static String getApplicationKey(String application) {
     "$AppEngineCloudProvider.ID:${Namespace.APPLICATIONS}:${application}"
   }
+
+  static String getClusterKey(String account, String application, String clusterName) {
+    "$AppEngineCloudProvider.ID:${Namespace.CLUSTERS}:${account}:${application}:${clusterName}"
+  }
+
+  static String getInstanceKey(String account, String instanceName) {
+    "$AppEngineCloudProvider.ID:${Namespace.INSTANCES}:${account}:${instanceName}"
+  }
+  static String getLoadBalancerKey(String account, String applicationName, String loadBalancerName) {
+    "$AppEngineCloudProvider.ID:${Namespace.LOAD_BALANCERS}:${account}:${applicationName}:${loadBalancerName}"
+  }
+
+  static String getServerGroupKey(String account, String serverGroupName, String region) {
+    Names names = Names.parseName(serverGroupName)
+    "$AppEngineCloudProvider.ID:${Namespace.SERVER_GROUPS}:${names.cluster}:${account}:${region}:${names.group}"
+  }
+
 }
