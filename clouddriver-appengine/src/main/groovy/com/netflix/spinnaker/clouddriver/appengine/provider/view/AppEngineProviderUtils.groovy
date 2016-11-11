@@ -35,9 +35,7 @@ class AppEngineProviderUtils {
 
   static AppEngineInstance instanceFromCacheData(ObjectMapper objectMapper, CacheData instanceData) {
     def instance = objectMapper.convertValue(instanceData.attributes.instance, AppEngineInstance)
-    def loadBalancers = instanceData.relationships[Keys.Namespace.LOAD_BALANCERS.ns].collect {
-      Keys.parse(it).name
-    }
+    def loadBalancers = instanceData.relationships[Keys.Namespace.LOAD_BALANCERS.ns].collect { Keys.parse(it).name }
     instance.loadBalancers = loadBalancers
     instance
   }

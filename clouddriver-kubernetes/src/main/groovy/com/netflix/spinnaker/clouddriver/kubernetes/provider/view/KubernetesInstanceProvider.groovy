@@ -50,7 +50,7 @@ class KubernetesInstanceProvider implements InstanceProvider<KubernetesInstance>
     if (instances.size() > 1) {
       throw new IllegalStateException("Multiple kubernetes pods with name $name in namespace $namespace exist.")
     }
-
+ 
     CacheData instanceData = (CacheData) instances.toArray()[0]
 
     if (!instanceData) {

@@ -24,19 +24,43 @@ import com.netflix.spinnaker.clouddriver.model.Instance
 class AppEngineInstance implements Instance, Serializable {
   String name
   Long launchTime
+  Status instanceStatus
   String zone
-  List<Map<String, Object>> health
-  HealthState healthState
+  String serverGroup
+  List<String> loadBalancers
+
+  AppEngineInstance() {}
 
   AppEngineInstance(AppEngineApiInstance instance) {
+    this.instanceStatus = Status.valueOf(instance.getAvailability())
     this.name = instance.getId()
     this.launchTime = AppEngineModelUtil.translateTime(instance.getStartTime())
+  }
 
-    def platformHealth = instance.getAvailability()
-    this.healthState = (platformHealth == 'DYNAMIC' || platformHealth == 'RESIDENT') ?
-      HealthState.Up :
-      HealthState.Unknown
+  HealthState getHealthState() {
+    instanceStatus.toHealthState()
+  }
 
-    this.health = [[(AppEngineCloudProvider.ID): platformHealth]]
+  List<Map<String, String>> getHealth() {
+    [[(AppEngineCloudProvider.ID): instanceStatus.toString()]]
+  }
+
+  enum Status {
+    DYNAMIC,
+    RESIDENT,
+    UNKNOWN
+
+    HealthState toHealthState() {
+      switch (this) {
+        case DYNAMIC:
+          return HealthState.Up
+        case RESIDENT:
+          return HealthState.Up
+        case UNKNOWN:
+          return HealthState.Unknown
+        default:
+          return HealthState.Down
+      }
+    }
   }
 }

@@ -30,6 +30,7 @@ import com.netflix.spinnaker.cats.cache.CacheData
 import com.netflix.spinnaker.cats.provider.ProviderCache
 import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.appengine.cache.Keys
+import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineInstance
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineServerGroup
 import com.netflix.spinnaker.clouddriver.appengine.security.AppEngineNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.cache.OnDemandAgent
@@ -56,8 +57,8 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
     AUTHORITATIVE.forType(APPLICATIONS.ns),
     AUTHORITATIVE.forType(CLUSTERS.ns),
     AUTHORITATIVE.forType(SERVER_GROUPS.ns),
-    INFORMATIVE.forType(INSTANCES.ns),
-    INFORMATIVE.forType(LOAD_BALANCERS.ns),
+    AUTHORITATIVE.forType(INSTANCES.ns),
+    AUTHORITATIVE.forType(LOAD_BALANCERS.ns),
   ] as Set)
 
   String agentType = "${accountName}/${credentials.region}/${AppEngineServerGroupCachingAgent.simpleName}"
@@ -154,9 +155,9 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
                                                                              new TypeReference<Map<String, List<MutableCacheData>>>() {})
           cache(cacheResults, APPLICATIONS.ns, cachedApplications)
           cache(cacheResults, CLUSTERS.ns, cachedClusters)
-          cache(cacheResults, SERVER_GROUPS.ns, cachedClusters)
-          cache(cacheResults, INSTANCES.ns, cachedClusters)
-          cache(cacheResults, LOAD_BALANCERS.ns, cachedClusters)
+          cache(cacheResults, SERVER_GROUPS.ns, cachedServerGroups)
+          cache(cacheResults, INSTANCES.ns, cachedInstances)
+          cache(cacheResults, LOAD_BALANCERS.ns, cachedLoadBalancers)
         } else {
           def serverGroupName = serverGroup.getId()
           def names = Names.parseName(serverGroupName)
@@ -183,19 +184,12 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
             relationships[LOAD_BALANCERS.ns].add(loadBalancerKey)
           }
 
-          cachedServerGroups[serverGroupKey].with {
-            attributes.name = serverGroupName
-            attributes.serverGroup = new AppEngineServerGroup(serverGroup,
-                                                              accountName,
-                                                              credentials.region,
-                                                              loadBalancerName)
-            relationships[APPLICATIONS.ns].add(applicationKey)
-            relationships[CLUSTERS.ns].add(clusterKey)
-          }
-
           def instanceKeys = instances.inject([], { ArrayList keys, instance ->
-            def key = Keys.getInstanceKey(accountName, instance.getId())
+            def instanceName = instance.getId()
+            def key = Keys.getInstanceKey(accountName, instanceName)
             cachedInstances[key].with {
+              attributes.name = instanceName
+              attributes.instance = new AppEngineInstance(instance)
               relationships[APPLICATIONS.ns].add(applicationKey)
               relationships[CLUSTERS.ns].add(clusterKey)
               relationships[SERVER_GROUPS.ns].add(serverGroupKey)
@@ -204,6 +198,18 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
             keys << key
             keys
           })
+
+          cachedServerGroups[serverGroupKey].with {
+            attributes.name = serverGroupName
+            attributes.serverGroup = new AppEngineServerGroup(serverGroup,
+                                                              accountName,
+                                                              credentials.region,
+                                                              loadBalancerName)
+            relationships[APPLICATIONS.ns].add(applicationKey)
+            relationships[CLUSTERS.ns].add(clusterKey)
+            relationships[INSTANCES.ns].addAll(instanceKeys)
+          }
+
 
           cachedLoadBalancers[loadBalancerKey].with {
             relationships[SERVER_GROUPS.ns].add(serverGroupKey)
@@ -224,6 +230,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
       (CLUSTERS.ns): cachedClusters.values(),
       (SERVER_GROUPS.ns): cachedServerGroups.values(),
       (LOAD_BALANCERS.ns): cachedLoadBalancers.values(),
+      (INSTANCES.ns): cachedInstances.values(),
       (ON_DEMAND.ns): onDemandKeep.values()
     ], [
       (ON_DEMAND.ns): onDemandEvict
@@ -254,7 +261,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
         .appengine.apps().services().versions().list(project, serviceName).execute().getVersions()
 
       acc[serviceName].addAll(versionsForService)
-      return acc
+      acc
     })
   }
 

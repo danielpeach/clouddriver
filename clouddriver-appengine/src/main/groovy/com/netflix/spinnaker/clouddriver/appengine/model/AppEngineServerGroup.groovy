@@ -44,13 +44,13 @@ class AppEngineServerGroup implements ServerGroup, Serializable {
     this.account = account
     this.region = region
     this.name = version.getId()
-    this.loadBalancers = [loadBalancerName]
+    this.loadBalancers = [loadBalancerName] as Set
   }
 
   @Override
   ServerGroup.InstanceCounts getInstanceCounts() {
     new ServerGroup.InstanceCounts(
-      down: 0,
+      down: (Integer) instances?.count { it.healthState == HealthState.Down } ?: 0,
       outOfService: 0,
       up: (Integer) instances?.count { it.healthState == HealthState.Up } ?: 0,
       starting: 0,
@@ -66,14 +66,10 @@ class AppEngineServerGroup implements ServerGroup, Serializable {
   }
 
   @Override
-  ServerGroup.ImageSummary getImageSummary() {
-    null
-  }
+  ServerGroup.ImageSummary getImageSummary() { null }
 
   @Override
-  ServerGroup.ImagesSummary getImagesSummary() {
-    null
-  }
+  ServerGroup.ImagesSummary getImagesSummary() { null }
 
   @Override
   Boolean isDisabled() {

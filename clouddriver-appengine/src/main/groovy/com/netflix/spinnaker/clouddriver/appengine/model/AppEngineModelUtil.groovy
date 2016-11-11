@@ -20,6 +20,6 @@ import java.text.SimpleDateFormat
 
 class AppEngineModelUtil {
   static Long translateTime(String time) {
-    time ? (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX").parse(time)).getTime() : 0
+    time ? (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'").parse(time)).getTime() : 0
   }
 }
