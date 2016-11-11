@@ -16,6 +16,8 @@
 
 package com.netflix.spinnaker.clouddriver.appengine.model
 
+import com.google.api.services.appengine.v1.model.Instance as AppEngineApiInstance
+import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.model.HealthState
 import com.netflix.spinnaker.clouddriver.model.Instance
 
@@ -24,6 +26,17 @@ class AppEngineInstance implements Instance, Serializable {
   Long launchTime
   String zone
   List<Map<String, Object>> health
-  List<String> loadBalancers
   HealthState healthState
+
+  AppEngineInstance(AppEngineApiInstance instance) {
+    this.name = instance.getId()
+    this.launchTime = AppEngineModelUtil.translateTime(instance.getStartTime())
+
+    def platformHealth = instance.getAvailability()
+    this.healthState = (platformHealth == 'DYNAMIC' || platformHealth == 'RESIDENT') ?
+      HealthState.Up :
+      HealthState.Unknown
+
+    this.health = [[(AppEngineCloudProvider.ID): platformHealth]]
+  }
 }

@@ -57,7 +57,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
     AUTHORITATIVE.forType(CLUSTERS.ns),
     AUTHORITATIVE.forType(SERVER_GROUPS.ns),
     INFORMATIVE.forType(INSTANCES.ns),
-    AUTHORITATIVE.forType(LOAD_BALANCERS.ns),
+    INFORMATIVE.forType(LOAD_BALANCERS.ns),
   ] as Set)
 
   String agentType = "${accountName}/${credentials.region}/${AppEngineServerGroupCachingAgent.simpleName}"

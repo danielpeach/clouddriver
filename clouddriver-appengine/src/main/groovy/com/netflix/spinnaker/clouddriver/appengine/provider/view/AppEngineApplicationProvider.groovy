@@ -17,6 +17,7 @@
 package com.netflix.spinnaker.clouddriver.appengine.provider.view
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.netflix.discovery.converters.Auto
 import com.netflix.spinnaker.cats.cache.Cache
 import com.netflix.spinnaker.cats.cache.CacheData
 import com.netflix.spinnaker.cats.cache.RelationshipCacheFilter
@@ -32,18 +33,11 @@ import static com.netflix.spinnaker.clouddriver.appengine.cache.Keys.Namespace.C
 
 @Component
 class AppEngineApplicationProvider implements ApplicationProvider {
-  private final AppEngineCloudProvider appEngineCloudProvider
-  private final Cache cacheView
-  private final ObjectMapper objectMapper
+  @Autowired
+  Cache cacheView
 
   @Autowired
-  AppEngineApplicationProvider(AppEngineCloudProvider appEngineCloudProvider,
-                               Cache cacheView,
-                               ObjectMapper objectMapper) {
-    this.appEngineCloudProvider = appEngineCloudProvider
-    this.cacheView = cacheView
-    this.objectMapper = objectMapper
-  }
+  ObjectMapper objectMapper
 
   @Override
   Set<AppEngineApplication> getApplications(boolean expand) {
@@ -58,9 +52,8 @@ class AppEngineApplicationProvider implements ApplicationProvider {
     CacheData cacheData = cacheView.get(APPLICATIONS.ns,
                                         Keys.getApplicationKey(name),
                                         RelationshipCacheFilter.include(CLUSTERS.ns))
-    if (cacheData) {
-      return applicationFromCacheData(cacheData)
-    }
+
+    cacheData ? applicationFromCacheData(cacheData) : null
   }
 
   AppEngineApplication applicationFromCacheData (CacheData cacheData) {

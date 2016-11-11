@@ -30,21 +30,21 @@ class AppEngineServerGroup implements ServerGroup, Serializable {
   String type = AppEngineCloudProvider.ID
   String account
   String region
-  Set<String> zones
+  Set<String> zones = []
   Set<AppEngineInstance> instances
   Set<String> loadBalancers = []
   Long createdTime
-  Map<String, Object> launchConfig
-  Set<String> securityGroups
+  Map<String, Object> launchConfig = [:]
+  Set<String> securityGroups = []
   Boolean disabled
 
   AppEngineServerGroup() {}
 
-  AppEngineServerGroup(Version version, String account, String region, String loadBalancer) {
+  AppEngineServerGroup(Version version, String account, String region, String loadBalancerName) {
     this.account = account
     this.region = region
     this.name = version.getId()
-    this.loadBalancers = [loadBalancer] as Set<String>
+    this.loadBalancers = [loadBalancerName]
   }
 
   @Override

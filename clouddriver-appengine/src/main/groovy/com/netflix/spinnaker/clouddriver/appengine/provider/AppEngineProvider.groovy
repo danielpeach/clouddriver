@@ -34,6 +34,7 @@ class AppEngineProvider extends AgentSchedulerAware implements SearchableProvide
     Keys.Namespace.CLUSTERS.ns,
     Keys.Namespace.SERVER_GROUPS.ns,
     Keys.Namespace.INSTANCES.ns,
+    Keys.Namespace.LOAD_BALANCERS.ns,
   ].asImmutable()
 
   AppEngineProvider(AppEngineCloudProvider cloudProvider, Collection<Agent> agents) {

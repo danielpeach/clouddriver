@@ -24,21 +24,15 @@ import static com.netflix.spinnaker.clouddriver.appengine.cache.Keys.Namespace.S
 
 @Component
 class AppEngineClusterProvider implements ClusterProvider<AppEngineCluster> {
-  private final AppEngineCloudProvider appEngineCloudProvider
-  private final Cache cacheView
-  private final ObjectMapper objectMapper
-  private final AppEngineApplicationProvider appEngineApplicationProvider
 
   @Autowired
-  AppEngineClusterProvider(AppEngineCloudProvider appEngineCloudProvider,
-                           Cache cacheView,
-                           ObjectMapper objectMapper,
-                           AppEngineApplicationProvider appEngineApplicationProvider) {
-    this.appEngineCloudProvider = appEngineCloudProvider
-    this.cacheView = cacheView
-    this.objectMapper = objectMapper
-    this.appEngineApplicationProvider = appEngineApplicationProvider
-  }
+  Cache cacheView
+
+  @Autowired
+  ObjectMapper objectMapper
+
+  @Autowired
+  AppEngineApplicationProvider appEngineApplicationProvider
 
   @Override
   Set<AppEngineCluster> getClusters(String applicationName, String account) {
