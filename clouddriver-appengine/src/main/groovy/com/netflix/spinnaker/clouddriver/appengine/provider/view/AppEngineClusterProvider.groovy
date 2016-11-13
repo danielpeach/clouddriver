@@ -25,6 +25,7 @@ import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.appengine.cache.Keys
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineApplication
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineCluster
+import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineInstance
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineLoadBalancer
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineServerGroup
 import com.netflix.spinnaker.clouddriver.model.ClusterProvider
@@ -54,11 +55,13 @@ class AppEngineClusterProvider implements ClusterProvider<AppEngineCluster> {
                                           Keys.getApplicationKey(applicationName),
                                           RelationshipCacheFilter.include(CLUSTERS.ns))
     if (!application) {
-      return [] as Set
+      return []
     }
 
-    Collection<String> clusterKeys = application.relationships[CLUSTERS.ns].findAll { Keys.parse(it).account == account }
+    Collection<String> clusterKeys = application.relationships[CLUSTERS.ns]
+      .findAll { Keys.parse(it).account == account }
     Collection<CacheData> clusterData = cacheView.getAll(CLUSTERS.ns, clusterKeys)
+
     translateClusters(clusterData, true)
   }
 
@@ -78,7 +81,17 @@ class AppEngineClusterProvider implements ClusterProvider<AppEngineCluster> {
 
   @Override
   AppEngineServerGroup getServerGroup(String account, String region, String serverGroupName) {
+    String serverGroupKey = Keys.getServerGroupKey(account, serverGroupName, region)
+    CacheData serverGroupData = cacheView.get(SERVER_GROUPS.ns, serverGroupKey)
 
+    if (!serverGroupData) {
+      return null
+    }
+
+    Set<AppEngineInstance> instances = cacheView.getAll(INSTANCES.ns, serverGroupData.relationships[INSTANCES.ns])
+      .collect { AppEngineProviderUtils.instanceFromCacheData(objectMapper, it) }
+
+    AppEngineProviderUtils.serverGroupFromCacheData(objectMapper, serverGroupData, instances)
   }
 
   @Override
@@ -112,23 +125,26 @@ class AppEngineClusterProvider implements ClusterProvider<AppEngineCluster> {
   }
 
   Collection<AppEngineCluster> translateClusters(Collection<CacheData> clusterData, boolean includeDetails) {
-    Map<String, AppEngineLoadBalancer> loadBalancers = !includeDetails ?:
+    if (!clusterData) {
+      return []
+    }
+
+    Map<String, AppEngineLoadBalancer> loadBalancers = includeDetails ?
       translateLoadBalancers(AppEngineProviderUtils.resolveRelationshipDataForCollection(
         cacheView,
         clusterData,
-        LOAD_BALANCERS.ns))
+        LOAD_BALANCERS.ns)) : null
 
-    Map<String, Set<AppEngineServerGroup>> serverGroups = !includeDetails ?:
+    Map<String, Set<AppEngineServerGroup>> serverGroups = includeDetails ?
       translateServerGroups(AppEngineProviderUtils.resolveRelationshipDataForCollection(
         cacheView,
         clusterData,
         SERVER_GROUPS.ns,
-        RelationshipCacheFilter.include(INSTANCES.ns, LOAD_BALANCERS.ns)))
+        RelationshipCacheFilter.include(INSTANCES.ns, LOAD_BALANCERS.ns))) : null
 
     return clusterData.collect { CacheData clusterDataEntry ->
       Map<String, String> clusterKey = Keys.parse(clusterDataEntry.id)
-
-      def cluster = new AppEngineCluster(accountName: clusterKey.account, name: clusterKey.name)
+      AppEngineCluster cluster = new AppEngineCluster(accountName: clusterKey.account, name: clusterKey.name)
 
       if (includeDetails) {
         cluster.loadBalancers = clusterDataEntry.relationships[LOAD_BALANCERS.ns]?.findResults { id ->
@@ -150,22 +166,24 @@ class AppEngineClusterProvider implements ClusterProvider<AppEngineCluster> {
   }
 
   Map<String, Set<AppEngineServerGroup>> translateServerGroups(Collection<CacheData> serverGroupData) {
-    def instanceCacheDataMap = AppEngineProviderUtils.preserveRelationshipDataForCollection(cacheView,
-                                                                                            serverGroupData,
-                                                                                            INSTANCES.ns,
-                                                                                            RelationshipCacheFilter.none())
+    def instanceCacheDataMap = AppEngineProviderUtils
+      .preserveRelationshipDataForCollection(cacheView,
+                                             serverGroupData,
+                                             INSTANCES.ns,
+                                             RelationshipCacheFilter.none())
 
     def instances = instanceCacheDataMap.collectEntries { String key, Collection<CacheData> cacheData ->
         [(key): cacheData.collect { AppEngineProviderUtils.instanceFromCacheData(objectMapper, it) } as Set ]
     }
 
-    return serverGroupData.inject([:].withDefault { [] }, { Map<String, Set<AppEngineServerGroup>> acc, CacheData cacheData ->
-      def serverGroup = AppEngineProviderUtils.serverGroupFromCacheData(objectMapper,
-                                                                        cacheData,
-                                                                        instances[cacheData.id])
-      acc[Names.parseName(serverGroup.name).cluster].add(serverGroup)
-      acc
-    })
+    return serverGroupData
+      .inject([:].withDefault { [] }, { Map<String, Set<AppEngineServerGroup>> acc, CacheData cacheData ->
+        def serverGroup = AppEngineProviderUtils.serverGroupFromCacheData(objectMapper,
+                                                                          cacheData,
+                                                                          instances[cacheData.id])
+        acc[Names.parseName(serverGroup.name).cluster].add(serverGroup)
+        acc
+      })
   }
 
   static Map<String, AppEngineLoadBalancer> translateLoadBalancers(Collection<CacheData> loadBalancerData) {

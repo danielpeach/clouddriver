@@ -18,7 +18,13 @@ package com.netflix.spinnaker.clouddriver.appengine.provider.agent
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.api.client.googleapis.batch.BatchRequest
+import com.google.api.client.googleapis.batch.json.JsonBatchCallback
+import com.google.api.client.googleapis.json.GoogleJsonError
+import com.google.api.client.http.HttpHeaders
 import com.google.api.services.appengine.v1.model.Instance
+import com.google.api.services.appengine.v1.model.ListInstancesResponse
+import com.google.api.services.appengine.v1.model.ListVersionsResponse
 import com.google.api.services.appengine.v1.model.Service
 import com.google.api.services.appengine.v1.model.Version
 import com.netflix.frigga.Names
@@ -32,6 +38,7 @@ import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.appengine.cache.Keys
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineInstance
 import com.netflix.spinnaker.clouddriver.appengine.model.AppEngineServerGroup
+import com.netflix.spinnaker.clouddriver.appengine.provider.callbacks.AppEngineCallback
 import com.netflix.spinnaker.clouddriver.appengine.security.AppEngineNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.cache.OnDemandAgent
 import com.netflix.spinnaker.clouddriver.cache.OnDemandMetricsSupport
@@ -68,9 +75,10 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
                                    ObjectMapper objectMapper,
                                    Registry registry) {
     super(accountName, objectMapper, credentials)
-    this.metricsSupport = new OnDemandMetricsSupport(registry,
-                                                     this,
-                                                     "$AppEngineCloudProvider.ID:$OnDemandAgent.OnDemandType.ServerGroup")
+    this.metricsSupport = new OnDemandMetricsSupport(
+      registry,
+      this,
+      "$AppEngineCloudProvider.ID:$OnDemandAgent.OnDemandType.ServerGroup")
   }
 
   @Override
@@ -95,17 +103,20 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
 
   @Override
   OnDemandAgent.OnDemandResult handle(ProviderCache providerCache, Map<String, ? extends Object> data) {
-    if (!data.containsKey("serverGroupName")) {
+    if (!data.containsKey("serverGroupName") || data.account != accountName) {
       return null
     }
 
-    def serverGroupName = data.serverGroupName
+    def serverGroupName = data.serverGroupName.toString()
+    def loadBalancerName = data.loadBalancer.toString()
+    Version serverGroup = loadServerGroup()
   }
 
   @Override
   CacheResult loadData(ProviderCache providerCache) {
     Long start = System.currentTimeMillis()
     Map<String, List<Version>> serverGroupsByLoadBalancerName = loadServerGroups()
+    Map<String, List<Instance>> instancesByServerGroupName = loadInstances(serverGroupsByLoadBalancerName)
     List<CacheData> evictFromOnDemand = []
     List<CacheData> keepInOnDemand = []
 
@@ -122,7 +133,11 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
     }
 
     def onDemandMap = keepInOnDemand.collectEntries { CacheData onDemandEntry -> [(onDemandEntry.id): onDemandEntry] }
-    def result = buildCacheResult(serverGroupsByLoadBalancerName, onDemandMap, evictFromOnDemand*.id, start)
+    def result = buildCacheResult(serverGroupsByLoadBalancerName,
+                                  instancesByServerGroupName,
+                                  onDemandMap,
+                                  evictFromOnDemand*.id,
+                                  start)
 
     result.cacheResults[ON_DEMAND.ns].each { CacheData onDemandEntry ->
       onDemandEntry.attributes.processedTime = System.currentTimeMillis()
@@ -133,6 +148,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
   }
 
   CacheResult buildCacheResult(Map<String, List<Version>> serverGroupsByLoadBalancerName,
+                               Map<String, List<Instance>> instancesByServerGroupName,
                                Map<String, CacheData> onDemandKeep,
                                List<String> onDemandEvict,
                                Long start) {
@@ -161,7 +177,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
         } else {
           def serverGroupName = serverGroup.getId()
           def names = Names.parseName(serverGroupName)
-          def instances = loadInstances(serverGroup, loadBalancerName)
+          def instances = instancesByServerGroupName[serverGroupName]
           def applicationName = names.app
           def clusterName = names.cluster
 
@@ -253,28 +269,61 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
 
   Map<String, List<Version>> loadServerGroups() {
     def project = credentials.project
-    def services = credentials.appengine.apps().services().list(project).execute().getServices()
+    def loadBalancers = credentials.appengine.apps().services().list(project).execute().getServices()
+    BatchRequest batch = credentials.appengine.batch()
+    Map<String, List<Version>> serverGroupsByLoadBalancerName = [:].withDefault { [] }
 
-    services.inject([:].withDefault { [] }, { Map<String, List<Version>> acc, Service service ->
-      def serviceName = service.getId()
-      def versionsForService = credentials
-        .appengine.apps().services().versions().list(project, serviceName).execute().getVersions()
+    loadBalancers.each { loadBalancer ->
+      def loadBalancerName = loadBalancer.getId()
 
-      acc[serviceName].addAll(versionsForService)
-      acc
-    })
+      def callback = new AppEngineCallback<ListVersionsResponse>()
+        .success({ ListVersionsResponse versionsResponse, HttpHeaders responseHeaders ->
+          serverGroupsByLoadBalancerName[loadBalancerName].addAll(versionsResponse.getVersions())
+        })
+
+      credentials
+        .appengine.apps().services().versions().list(project, loadBalancerName).queue(batch, callback)
+    }
+
+    batch.execute()
+    serverGroupsByLoadBalancerName
   }
 
-  List<Instance> loadInstances(Version version, String serviceName) {
+  Version loadServerGroup(String serviceName, String versionName) {
     credentials
       .appengine
       .apps()
       .services()
       .versions()
-      .instances()
-      .list(credentials.project, serviceName, version.getId())
+      .get(credentials.project, serviceName, versionName)
       .execute()
-      .getInstances()
+  }
+
+  Map<String, List<Instance>> loadInstances(Map<String, List<Version>> serverGroupsByLoadBalancerName) {
+    BatchRequest batch = credentials.appengine.batch()
+    Map<String, List<Instance>> instancesByServerGroupName = [:].withDefault { [] }
+
+    serverGroupsByLoadBalancerName.each { String loadBalancerName, List<Version> serverGroups ->
+      serverGroups.each { Version serverGroup ->
+        def serverGroupName = serverGroup.getId()
+        def callback = new AppEngineCallback<ListInstancesResponse>()
+          .success({ ListInstancesResponse instancesResponse ->
+            instancesByServerGroupName[serverGroupName].addAll(instancesResponse.getInstances())
+          })
+
+        credentials
+          .appengine
+          .apps()
+          .services()
+          .versions()
+          .instances()
+          .list(credentials.project, loadBalancerName, serverGroupName)
+          .queue(batch, callback)
+      }
+    }
+
+    batch.execute()
+    instancesByServerGroupName
   }
 
   @Override

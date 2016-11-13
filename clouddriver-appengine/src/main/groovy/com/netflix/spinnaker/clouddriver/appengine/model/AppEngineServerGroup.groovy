@@ -66,10 +66,14 @@ class AppEngineServerGroup implements ServerGroup, Serializable {
   }
 
   @Override
-  ServerGroup.ImageSummary getImageSummary() { null }
+  ServerGroup.ImageSummary getImageSummary() {
+    null
+  }
 
   @Override
-  ServerGroup.ImagesSummary getImagesSummary() { null }
+  ServerGroup.ImagesSummary getImagesSummary() {
+    null
+  }
 
   @Override
   Boolean isDisabled() {

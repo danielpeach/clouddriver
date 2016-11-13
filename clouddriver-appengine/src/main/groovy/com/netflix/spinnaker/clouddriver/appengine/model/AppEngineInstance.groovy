@@ -24,15 +24,16 @@ import com.netflix.spinnaker.clouddriver.model.Instance
 class AppEngineInstance implements Instance, Serializable {
   String name
   Long launchTime
-  Status instanceStatus
+  AppEngineInstanceStatus instanceStatus
   String zone
   String serverGroup
   List<String> loadBalancers
+  String providerType = AppEngineCloudProvider.ID
 
   AppEngineInstance() {}
 
   AppEngineInstance(AppEngineApiInstance instance) {
-    this.instanceStatus = Status.valueOf(instance.getAvailability())
+    this.instanceStatus = AppEngineInstanceStatus.valueOf(instance.getAvailability())
     this.name = instance.getId()
     this.launchTime = AppEngineModelUtil.translateTime(instance.getStartTime())
   }
@@ -45,7 +46,7 @@ class AppEngineInstance implements Instance, Serializable {
     [[(AppEngineCloudProvider.ID): instanceStatus.toString()]]
   }
 
-  enum Status {
+  enum AppEngineInstanceStatus {
     DYNAMIC,
     RESIDENT,
     UNKNOWN

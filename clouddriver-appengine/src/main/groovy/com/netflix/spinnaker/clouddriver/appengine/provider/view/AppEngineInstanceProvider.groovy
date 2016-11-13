@@ -56,11 +56,16 @@ class AppEngineInstanceProvider implements InstanceProvider<AppEngineInstance> {
   }
 
   AppEngineInstance getInstanceFromCacheData(CacheData cacheData) {
-    AppEngineInstance instance = objectMapper.convertValue(cacheData.attributes, AppEngineInstance)
+    AppEngineInstance instance = objectMapper.convertValue(cacheData.attributes.instance, AppEngineInstance)
 
     def serverGroupKey = cacheData.relationships[SERVER_GROUPS.ns]?.first()
     if (serverGroupKey) {
       instance.serverGroup = Keys.parse(serverGroupKey).serverGroup
+    }
+
+    def loadBalancerKey = cacheData.relationships[LOAD_BALANCERS.ns]?.first()
+    if (loadBalancerKey) {
+      instance.loadBalancers = [Keys.parse(loadBalancerKey).loadBalancer]
     }
 
     instance
