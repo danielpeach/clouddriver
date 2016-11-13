@@ -33,6 +33,7 @@ import com.netflix.spinnaker.cats.agent.AgentDataType
 import com.netflix.spinnaker.cats.agent.CacheResult
 import com.netflix.spinnaker.cats.agent.DefaultCacheResult
 import com.netflix.spinnaker.cats.cache.CacheData
+import com.netflix.spinnaker.cats.cache.DefaultCacheData
 import com.netflix.spinnaker.cats.provider.ProviderCache
 import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.appengine.cache.Keys
@@ -108,8 +109,66 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
     }
 
     def serverGroupName = data.serverGroupName.toString()
-    def loadBalancerName = data.loadBalancer.toString()
-    Version serverGroup = loadServerGroup()
+    def matchingServerGroupAndLoadBalancer = metricsSupport.readData {
+      loadServerGroup(serverGroupName)
+    }
+
+    def serverGroup = matchingServerGroupAndLoadBalancer.serverGroup
+    def loadBalancer = matchingServerGroupAndLoadBalancer.loadBalancer
+
+    def instances
+    if (serverGroup && loadBalancer) {
+      instances = loadInstances([(loadBalancer.getId()): [serverGroup]])
+    }
+
+    CacheResult result = metricsSupport.transformData {
+      buildCacheResult(
+        [(loadBalancer.getId()): [serverGroup]],
+        instances,
+        [:],
+        [],
+        Long.MAX_VALUE
+      )
+    }
+
+    def jsonResult = objectMapper.writeValueAsString(result.cacheResults)
+
+    if (result.cacheResults.values().flatten().isEmpty()) {
+      providerCache.evictDeletedItems(
+        ON_DEMAND.ns,
+        [Keys.getServerGroupKey(accountName, serverGroupName, credentials.region)]
+      )
+    } else {
+      metricsSupport.onDemandStore {
+        def cacheData = new DefaultCacheData(
+          Keys.getServerGroupKey(accountName, serverGroupName, credentials.region),
+          10 * 60,
+          [
+            cacheTime: System.currentTimeMillis(),
+            cacheResults: jsonResult,
+            processedCount: 0,
+            processedTime: null
+          ],
+          [:]
+        )
+
+        providerCache.putCacheData(ON_DEMAND.ns, cacheData)
+      }
+    }
+
+    Map<String, Collection<String>> evictions = serverGroup ? [:] : [
+      (SERVER_GROUPS.ns): [
+        Keys.getServerGroupKey(accountName, serverGroupName, credentials.region)
+      ]
+    ]
+
+    log.info "On demand cache refresh (data: ${data}) succeeded."
+
+    new OnDemandAgent.OnDemandResult(
+      sourceAgentType: getOnDemandAgentType(),
+      cacheResult: result,
+      evictions: evictions
+    )
   }
 
   @Override
@@ -177,7 +236,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
         } else {
           def serverGroupName = serverGroup.getId()
           def names = Names.parseName(serverGroupName)
-          def instances = instancesByServerGroupName[serverGroupName]
+          def instances = instancesByServerGroupName[serverGroupName] ?: []
           def applicationName = names.app
           def clusterName = names.cluster
 
@@ -269,7 +328,7 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
 
   Map<String, List<Version>> loadServerGroups() {
     def project = credentials.project
-    def loadBalancers = credentials.appengine.apps().services().list(project).execute().getServices()
+    def loadBalancers = credentials.appengine.apps().services().list(project).execute().getServices() ?: []
     BatchRequest batch = credentials.appengine.batch()
     Map<String, List<Version>> serverGroupsByLoadBalancerName = [:].withDefault { [] }
 
@@ -277,9 +336,12 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
       def loadBalancerName = loadBalancer.getId()
 
       def callback = new AppEngineCallback<ListVersionsResponse>()
-        .success({ ListVersionsResponse versionsResponse, HttpHeaders responseHeaders ->
-          serverGroupsByLoadBalancerName[loadBalancerName].addAll(versionsResponse.getVersions())
-        })
+        .success { ListVersionsResponse versionsResponse, HttpHeaders responseHeaders ->
+          def versions = versionsResponse.getVersions()
+          if (versions) {
+            serverGroupsByLoadBalancerName[loadBalancerName].addAll(versions)
+          }
+        }
 
       credentials
         .appengine.apps().services().versions().list(project, loadBalancerName).queue(batch, callback)
@@ -289,14 +351,40 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
     serverGroupsByLoadBalancerName
   }
 
-  Version loadServerGroup(String serviceName, String versionName) {
-    credentials
-      .appengine
-      .apps()
-      .services()
-      .versions()
-      .get(credentials.project, serviceName, versionName)
-      .execute()
+  Map loadServerGroup(String serverGroupName) {
+    def project = credentials.project
+    def loadBalancers = credentials.appengine.apps().services().list(project).execute().getServices() ?: []
+    BatchRequest batch = credentials.appengine.batch()
+    Service loadBalancer
+    Version serverGroup
+
+    loadBalancers.each { Service lb ->
+      def loadBalancerName = lb.getId()
+      def callback = new AppEngineCallback<Version>()
+        .success { Version version, HttpHeaders responseHeaders ->
+          if (version) {
+            serverGroup = version
+            loadBalancer = lb
+          }
+        }
+        .failure { GoogleJsonError e, HttpHeaders responseHeaders ->
+          if (e.code != 404) {
+            def errorJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(e)
+            log.error errorJson
+          }
+        }
+
+        credentials
+          .appengine
+          .apps()
+          .services()
+          .versions()
+          .get(credentials.project, loadBalancerName, serverGroupName)
+          .queue(batch, callback)
+    }
+
+    batch.execute()
+    ['serverGroup': serverGroup, 'loadBalancer': loadBalancer]
   }
 
   Map<String, List<Instance>> loadInstances(Map<String, List<Version>> serverGroupsByLoadBalancerName) {
@@ -307,9 +395,12 @@ class AppEngineServerGroupCachingAgent extends AbstractAppEngineCachingAgent imp
       serverGroups.each { Version serverGroup ->
         def serverGroupName = serverGroup.getId()
         def callback = new AppEngineCallback<ListInstancesResponse>()
-          .success({ ListInstancesResponse instancesResponse ->
-            instancesByServerGroupName[serverGroupName].addAll(instancesResponse.getInstances())
-          })
+          .success { ListInstancesResponse instancesResponse, HttpHeaders httpHeaders ->
+            def instances = instancesResponse.getInstances()
+            if (instances) {
+              instancesByServerGroupName[serverGroupName].addAll(instances)
+            }
+          }
 
         credentials
           .appengine

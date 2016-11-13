@@ -16,10 +16,13 @@
 
 package com.netflix.spinnaker.clouddriver.appengine.provider.callbacks
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.api.client.googleapis.batch.json.JsonBatchCallback
 import com.google.api.client.googleapis.json.GoogleJsonError
 import com.google.api.client.http.HttpHeaders
+import groovy.util.logging.Slf4j
 
+@Slf4j
 class AppEngineCallback<T> extends JsonBatchCallback<T> {
   Closure successCb
   Closure failureCb
@@ -44,7 +47,8 @@ class AppEngineCallback<T> extends JsonBatchCallback<T> {
     if (failureCb) {
       failureCb(e, httpHeaders)
     } else {
-      throw IOException(e)
+      def errorJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(e)
+      log.error errorJson
     }
   }
 }
