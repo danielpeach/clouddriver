@@ -16,7 +16,6 @@
 
 package com.netflix.spinnaker.clouddriver.appengine.model
 
-import com.google.api.services.appengine.v1.model.ManualScaling
 import com.google.api.services.appengine.v1.model.Version
 import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.model.HealthState
