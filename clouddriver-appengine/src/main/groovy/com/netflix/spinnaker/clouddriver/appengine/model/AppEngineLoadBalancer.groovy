@@ -18,6 +18,7 @@ package com.netflix.spinnaker.clouddriver.appengine.model
 
 import com.netflix.spinnaker.clouddriver.appengine.AppEngineCloudProvider
 import com.netflix.spinnaker.clouddriver.model.LoadBalancer
+import com.netflix.spinnaker.clouddriver.model.LoadBalancerInstance
 import com.netflix.spinnaker.clouddriver.model.LoadBalancerServerGroup
 import groovy.transform.CompileStatic
 import groovy.transform.EqualsAndHashCode
@@ -30,4 +31,20 @@ class AppEngineLoadBalancer implements LoadBalancer, Serializable {
   final String cloudProvider = AppEngineCloudProvider.ID
   String account
   Set<LoadBalancerServerGroup> serverGroups = new HashSet<>()
+
+  AppEngineLoadBalancer() { }
+
+//  AppEngineLoadBalancer(String name, String account, Set<AppEngineServerGroup> serverGroups) {
+//    this.name = name
+//    this.account = account
+//    this.serverGroups = serverGroups?.collect { serverGroup ->
+//      new LoadBalancerServerGroup(
+//        name: serverGroup.name,
+//        isDisabled: serverGroup.isDisabled(),
+//        instances: serverGroup.instances?.collect { instance ->
+//          new LoadBalancerInstance(id: instance.name, health: [ state: instance.healthState.toString() ])
+//        }
+//      )
+//    } as Set
+//  }
 }
