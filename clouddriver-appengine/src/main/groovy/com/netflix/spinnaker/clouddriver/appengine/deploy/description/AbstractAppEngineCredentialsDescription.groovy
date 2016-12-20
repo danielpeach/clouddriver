@@ -20,5 +20,6 @@ import com.netflix.spinnaker.clouddriver.appengine.security.AppEngineNamedAccoun
 import com.netflix.spinnaker.clouddriver.security.resources.CredentialsNameable
 
 abstract class AbstractAppEngineCredentialsDescription implements CredentialsNameable {
+  String account
   AppEngineNamedAccountCredentials credentials
 }
