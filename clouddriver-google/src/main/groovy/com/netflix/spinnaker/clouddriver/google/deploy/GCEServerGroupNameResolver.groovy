@@ -20,6 +20,7 @@ import com.google.api.services.compute.model.InstanceGroupManager
 import com.netflix.frigga.Names
 import com.netflix.spinnaker.clouddriver.google.model.callbacks.Utils
 import com.netflix.spinnaker.clouddriver.google.security.GoogleNamedAccountCredentials
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.SafeRetry
 import com.netflix.spinnaker.clouddriver.helpers.AbstractServerGroupNameResolver
 
 class GCEServerGroupNameResolver extends AbstractServerGroupNameResolver {

@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.google.deploy
+package com.netflix.spinnaker.clouddriver.googlecommon.deploy
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.netflix.spinnaker.clouddriver.data.task.Task
-import com.netflix.spinnaker.clouddriver.google.deploy.exception.GoogleOperationException
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.exception.AppEngineOperationException
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.exception.GoogleOperationException
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -42,6 +43,18 @@ class SafeRetry {
   @Value('${google.safeRetryMaxRetries:10}')
   Long maxRetries
 
+  @Value('${appengine.safeRetryMaxWaitIntervalMs:60000}')
+  Long appEngineMaxWaitInterval
+
+  @Value('${appengine.safeRetryRetryIntervalBaseSec:2}')
+  Long appEngineRetryIntervalBase
+
+  @Value('${appengine.safeRetryJitterMultiplier:1000}')
+  Long appEngineJitterMultiplier
+
+  @Value('${appengine.safeRetryMaxRetries:10}')
+  Long appEngineMaxRetries
+
   /**
    * Retry a GCP operation if it fails. Treat any error codes in successfulErrorCodes as success.
    *
@@ -62,6 +75,53 @@ class SafeRetry {
                         String phase,
                         List<Integer> retryCodes,
                         List<Integer> successfulErrorCodes) {
+    return doRetry(operation,
+                   action,
+                   resource,
+                   task,
+                   phase,
+                   retryCodes,
+                   successfulErrorCodes,
+                   GoogleOperationException,
+                   maxWaitInterval,
+                   retryIntervalBase,
+                   jitterMultiplier,
+                   maxRetries)
+  }
+
+  public Object doAppEngineRetry(Closure operation,
+                                 String action,
+                                 String resource,
+                                 Task task,
+                                 String phase,
+                                 List<Integer> retryCodes,
+                                 List<Integer> successfulErrorCodes) {
+    return doRetry(operation,
+                   action,
+                   resource,
+                   task,
+                   phase,
+                   retryCodes,
+                   successfulErrorCodes,
+                   AppEngineOperationException,
+                   appEngineMaxWaitInterval,
+                   appEngineRetryIntervalBase,
+                   appEngineJitterMultiplier,
+                   appEngineMaxRetries)
+  }
+
+  public Object doRetry(Closure operation,
+                        String action,
+                        String resource,
+                        Task task,
+                        String phase,
+                        List<Integer> retryCodes,
+                        List<Integer> successfulErrorCodes,
+                        Class ProviderOperationException,
+                        Long maxWaitInterval,
+                        Long retryIntervalBase,
+                        Long jitterMultiplier,
+                        Long maxRetries) {
     try {
       task?.updateStatus phase, "Attempting $action of $resource..."
       return operation()
@@ -106,16 +166,16 @@ class SafeRetry {
               + " and reason ${lastSeenError.getReason()}.")
             return null
           } else {
-            throw new GoogleOperationException("Failed to $action $resource after #$tries."
+            throw ProviderOperationException.newInstance("Failed to $action $resource after #$tries."
               + " Last seen exception has status code ${lastSeenException.getStatusCode()} with error message ${lastSeenError.getMessage()}"
               + " and reason ${lastSeenError.getReason()}.")
           }
         } else {
-          throw new GoogleOperationException("Failed to $action $resource after #$tries."
+          throw ProviderOperationException.newInstance("Failed to $action $resource after #$tries."
             + " Last seen exception has status code ${lastSeenException.getStatusCode()} with message ${lastSeenException.getMessage()}.")
         }
       } else if (lastSeenException && lastSeenException instanceof SocketTimeoutException) {
-        throw new GoogleOperationException("Failed to $action $resource after #$tries."
+        throw ProviderOperationException.newInstance("Failed to $action $resource after #$tries."
           + " Last operation timed out.")
       } else {
         throw new IllegalStateException("Caught exception is neither a JsonResponseException nor a OperationTimedOutException."

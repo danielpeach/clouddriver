@@ -16,6 +16,7 @@
 
 package com.netflix.spinnaker.clouddriver.appengine.deploy.exception
 
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.exception.AppEngineOperationException
 import groovy.transform.InheritConstructors
 
 @InheritConstructors

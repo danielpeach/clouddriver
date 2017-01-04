@@ -21,8 +21,9 @@ import com.google.api.services.compute.model.Operation
 import com.google.common.annotations.VisibleForTesting
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.google.config.GoogleConfigurationProperties
-import com.netflix.spinnaker.clouddriver.google.deploy.exception.GoogleOperationException
 import com.netflix.spinnaker.clouddriver.google.deploy.exception.GoogleOperationTimedOutException
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.SafeRetry
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.exception.GoogleOperationException
 import org.springframework.beans.factory.annotation.Autowired
 
 class GoogleOperationPoller {

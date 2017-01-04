@@ -18,7 +18,7 @@ package com.netflix.spinnaker.clouddriver.google.provider.agent
 
 import com.google.api.client.googleapis.json.GoogleJsonError
 import com.google.api.client.http.HttpHeaders
-import com.netflix.spinnaker.clouddriver.google.deploy.exception.GoogleOperationException
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.exception.GoogleOperationException
 import groovy.util.logging.Slf4j
 
 @Slf4j

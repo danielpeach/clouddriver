@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Google, Inc.
+ * Copyright 2015 Google, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.appengine.deploy.exception
+package com.netflix.spinnaker.clouddriver.googlecommon.deploy.exception
 
 import groovy.transform.InheritConstructors
 
 @InheritConstructors
-class AppEngineOperationException extends RuntimeException { }
+class GoogleOperationException extends RuntimeException {}

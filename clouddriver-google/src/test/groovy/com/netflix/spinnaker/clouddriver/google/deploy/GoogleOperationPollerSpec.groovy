@@ -18,6 +18,7 @@ package com.netflix.spinnaker.clouddriver.google.deploy
 
 import com.google.api.services.compute.model.Operation
 import com.netflix.spinnaker.clouddriver.google.config.GoogleConfigurationProperties
+import com.netflix.spinnaker.clouddriver.googlecommon.deploy.SafeRetry
 import spock.lang.Shared
 import spock.lang.Specification
 
