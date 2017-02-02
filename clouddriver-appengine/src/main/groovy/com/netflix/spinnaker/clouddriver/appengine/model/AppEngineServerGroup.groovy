@@ -61,6 +61,7 @@ class AppEngineServerGroup implements ServerGroup, Serializable {
     this.httpUrl = AppEngineModelUtil.getHttpUrl(version.getName())
     this.httpsUrl = AppEngineModelUtil.getHttpsUrl(version.getName())
     this.instanceClass = version.getInstanceClass()
+    this.launchConfig.instanceType = this.instanceClass
     this.zones = [region] as Set
     this.allowsGradualTrafficMigration = versionAllowsGradualTrafficMigration(version)
   }
